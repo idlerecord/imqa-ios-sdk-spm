@@ -12,23 +12,19 @@ let package = Package(
         .library(
             name: "IMQACore",
             type: .static,
-            targets: ["IMQACore"]
-        )
-    ],
-    targets: [
-        .target(
-            name: "IMQACore",
-            dependencies: [
-                "IMQACoreBinary",
+            targets: [
+                "IMQACore",
                 "IMQACommon",
                 "IMQADeviceInfo",
                 "IMQAObjCUtilsInternal",
                 "KSCrash",
                 "SwiftProtobuf"
             ]
-        ),
+        )
+    ],
+    targets: [
         .binaryTarget(
-            name: "IMQACoreBinary",
+            name: "IMQACore",
             url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.54/IMQACore.xcframework.zip",
             checksum: "2701b001c7722e8b81dff71f7b4e1845cde933d397c69cdbde0034e288a3f13b"
         ),
