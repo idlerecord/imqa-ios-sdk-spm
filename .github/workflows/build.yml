@@ -1,0 +1,78 @@
+name: Publish to SPM
+
+on:
+  repository_dispatch:
+    types: [trigger-publishSPM-workflow]  # Listen for trigger event from Workflow A
+
+jobs:
+  publish:
+    runs-on: publishSPM  # Update this to the appropriate environment
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      
+      - name: 🧰 Install zip
+        run: brew install zip
+
+      - name: Create directory for downloaded artifacts
+        run: mkdir -p ./downloaded  # 确保目录存在
+
+      - name: Download zip from remote server
+        run: |
+          curl -O "${{ github.event.client_payload.url }}"
+          unzip ${{ github.event.client_payload.archive_name }} -d ./extracted
+
+      - name: Replace xcframework
+        run: |
+          set -e
+          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
+          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
+          rm -rf "$DEST_DIR"/*  # Clear out the old xcframework
+          cp -R ./extracted/* "$DEST_DIR"  # Copy new xcframework into repo
+
+      - name: ♻️ Zip all .xcframeworks
+        run: |
+          mkdir -p zips
+          for f in IMQACore/Frameworks/*.xcframework; do
+            name=$(basename "$f" .xcframework)
+            zip -r "zips/${name}.xcframework.zip" "$f"
+          done
+
+      - name: 🧮 Compute checksums
+        id: checksums
+        run: |
+          echo "checksums=" >> $GITHUB_ENV
+          for f in zips/*.zip; do
+            name=$(basename "$f" .xcframework.zip)
+            checksum=$(swift package compute-checksum "$f")
+            echo "$name=$checksum" >> $GITHUB_ENV
+          done
+
+      - name: 📝 Update Package.swift
+        run: |
+          version=${{ github.event.client_payload.version }}
+          for f in zips/*.zip; do
+            name=$(basename "$f" .xcframework.zip)
+            checksum=$(swift package compute-checksum "$f")
+            sed -i '' "/name: \"$name\",/,/checksum:/ {
+              s|url: \".*\"|url: \"https://github.com/${{ github.repository }}/releases/download/${version}/${name}.xcframework.zip\"|
+              s|checksum: \".*\"|checksum: \"${checksum}\"|
+            }" Package.swift
+          done
+
+      - name: 🚀 Commit updated Package.swift
+        run: |
+          git add Package.swift
+          git commit -m "build: update Package.swift for ${{ github.event.client_payload.version }} binary release"
+          git tag -f ${{ github.event.client_payload.version }}
+          git push origin main
+          git push -f origin ${{ github.event.client_payload.version }}
+
+      - name: 📦 Upload release artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.client_payload.version }}
+          files: zips/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN_COPY }}
