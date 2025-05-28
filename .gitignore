@@ -42,3 +42,9 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+IMQACore/Frameworks/IMQACommon.xcframework
+IMQACore/Frameworks/IMQACore.xcframework
+IMQACore/Frameworks/IMQADeviceInfo.xcframework
+IMQACore/Frameworks/IMQAObjCUtilsInternal.xcframework
+IMQACore/Frameworks/KSCrash.xcframework
+IMQACore/Frameworks/SwiftProtobuf.xcframework
