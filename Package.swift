@@ -11,7 +11,6 @@ let package = Package(
     products: [
         .library(
             name: "IMQACore",
-            type: .static,
             targets: [
                 "IMQACore",
                 "IMQACommon",
