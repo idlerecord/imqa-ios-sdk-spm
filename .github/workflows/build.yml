@@ -91,10 +91,10 @@ jobs:
           REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
           cd "$REPO_DIR"
           git add Package.swift
-          git commit -m "build: update Package.swift for ${{ github.event.client_payload.version }} binary release"
-          git tag -f ${{ github.event.client_payload.version }}
+          git commit -m "build: update Package.swift for ${{ github.event.client_payload.version || github.event.inputs.VERSION}} binary release"
+          git tag -f ${{ github.event.client_payload.version || github.event.inputs.VERSION}}
           git push origin main
-          git push -f origin ${{ github.event.client_payload.version }}
+          git push -f origin ${{ github.event.client_payload.version || github.event.inputs.VERSION}}
 
       - name: 📦 Upload release artifacts
         uses: softprops/action-gh-release@v1
