@@ -99,7 +99,7 @@ jobs:
       - name: 📦 Upload release artifacts
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.client_payload.version }}
+          tag_name: ${{ github.event.client_payload.version || github.event.inputs.VERSION}}
           files: /Users/imqatest/Desktop/iOS/PublishSDKONSPM/zips/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN_COPY }}
