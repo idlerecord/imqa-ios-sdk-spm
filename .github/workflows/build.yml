@@ -33,17 +33,21 @@ jobs:
 
       - name: ♻️ Zip all .xcframeworks
         run: |
-          mkdir -p zips
-          for f in IMQACore/Frameworks/*.xcframework; do
+          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
+          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
+          mkdir -p "$REPO_DIR"/zips
+          for f in "$DEST_DIR"/*.xcframework; do
             name=$(basename "$f" .xcframework)
-            zip -r "zips/${name}.xcframework.zip" "$f"
+            zip -r "$REPO_DIR"/zips/${name}.xcframework.zip" "$f"
           done
 
       - name: 🧮 Compute checksums
         id: checksums
         run: |
+          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
+          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
           echo "checksums=" >> $GITHUB_ENV
-          for f in zips/*.zip; do
+          for f in "$REPO_DIR"/zips/*.zip; do
             name=$(basename "$f" .xcframework.zip)
             checksum=$(swift package compute-checksum "$f")
             echo "$name=$checksum" >> $GITHUB_ENV
@@ -51,8 +55,11 @@ jobs:
 
       - name: 📝 Update Package.swift
         run: |
+          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
+          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
+
           version=${{ github.event.client_payload.version }}
-          for f in zips/*.zip; do
+          for f in "$REPO_DIR"/zips/*.zip; do
             name=$(basename "$f" .xcframework.zip)
             checksum=$(swift package compute-checksum "$f")
             sed -i '' "/name: \"$name\",/,/checksum:/ {
@@ -63,6 +70,8 @@ jobs:
 
       - name: 🚀 Commit updated Package.swift
         run: |
+          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
+          cd "$REPO_DIR"
           git add Package.swift
           git commit -m "build: update Package.swift for ${{ github.event.client_payload.version }} binary release"
           git tag -f ${{ github.event.client_payload.version }}
@@ -73,6 +82,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.client_payload.version }}
-          files: zips/*.zip
+          files: /Users/imqatest/Desktop/iOS/PublishSDKONSPM/zips/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN_COPY }}
