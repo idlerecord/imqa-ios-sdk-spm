@@ -3,6 +3,19 @@ name: Publish to SPM
 on:
   repository_dispatch:
     types: [trigger-publishSPM-workflow]  # Listen for trigger event from Workflow A
+    
+  workflow_dispatch:
+    inputs:
+      URL:
+        description: 'ZIP File Download URL'
+        required: false
+        default: 'https://cdn.imqa.io/release/sdk/ios/1.0.58/1.0.58_20250529_new.zip'
+
+      ARCHIVE_NAME:
+        description: 'Archive file name (e.g. app.zip)'
+        required: false
+        default: '1.0.58_20250529_new.zip'
+
 
 jobs:
   publish:
@@ -11,6 +24,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          ref: workflow  # 指定分支名
       
       - name: 🧰 Install zip
         run: brew install zip
@@ -20,8 +35,8 @@ jobs:
 
       - name: Download zip from remote server
         run: |
-          curl -O "${{ github.event.client_payload.url }}"
-          unzip ${{ github.event.client_payload.archive_name }} -d ./extracted
+          curl -O "${{ github.event.client_payload.url || github.event.inputs.URL}}"
+          unzip ${{ github.event.client_payload.archive_name || github.event.inputs.ARCHIVE_NAME }} -d ./extracted
 
       - name: Replace xcframework
         run: |
@@ -38,7 +53,7 @@ jobs:
           mkdir -p "$REPO_DIR"/zips
           for f in "$DEST_DIR"/*.xcframework; do
             name=$(basename "$f" .xcframework)
-            zip -r "$REPO_DIR"/zips/${name}.xcframework.zip" "$f"
+            zip -r "$REPO_DIR/zips/${name}.xcframework.zip" "$f"
           done
 
       - name: 🧮 Compute checksums
