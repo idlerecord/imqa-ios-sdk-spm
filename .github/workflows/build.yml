@@ -29,8 +29,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-        with:
-          ref: workflow  # 指定分支名
       
       - name: 🧰 Install zip
         run: brew install zip
