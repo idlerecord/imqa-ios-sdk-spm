@@ -6,6 +6,11 @@ on:
     
   workflow_dispatch:
     inputs:
+      VERSION:
+        description: 'SDK Version'
+        required: false
+        default: '1.0.58'
+
       URL:
         description: 'ZIP File Download URL'
         required: false
@@ -73,7 +78,7 @@ jobs:
           REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
           DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
 
-          version=${{ github.event.client_payload.version }}
+          version=${{ github.event.client_payload.version || github.event.inputs.VERSION}}
           for f in "$REPO_DIR"/zips/*.zip; do
             name=$(basename "$f" .xcframework.zip)
             checksum=$(swift package compute-checksum "$f")
