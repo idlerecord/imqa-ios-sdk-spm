@@ -25,32 +25,32 @@ let package = Package(
         .binaryTarget(
             name: "IMQACore",
             url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.72/IMQACore.xcframework.zip",
-            checksum: "d43f634a7ef4cd85da76820f5077954291ac5e0f04860f00f41f544c717b3a24"
+            checksum: "b944271ebe407fe3dcd38b413247e20d2dccb882714d9770b82f0a14d2cdc7bc"
         ),
         .binaryTarget(
             name: "IMQACommon",
             url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.72/IMQACommon.xcframework.zip",
-            checksum: "27c24a66b82ce1ca1a60047c9f0c5e852fef484479fe02f38a2be440ecbd29c4"
+            checksum: "c9a2c5a42f25d6fccfc90151872e51af58394116f5ce81ed5ddee86f1eec357b"
         ),
         .binaryTarget(
             name: "IMQADeviceInfo",
             url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.72/IMQADeviceInfo.xcframework.zip",
-            checksum: "7e6b4be0ff666ad8ed52517cdd237e0535c68e08e9478aafab16b261435680e1"
+            checksum: "b2909b285189b44de28ce9b2f7406652594d8c3c525be94187c0701a64ea5489"
         ),
         .binaryTarget(
             name: "IMQAObjCUtilsInternal",
             url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.72/IMQAObjCUtilsInternal.xcframework.zip",
-            checksum: "93d4d4481c98249f133c67de5613c1b334054c171f3a82f7b16f0a2ba5f36e01"
+            checksum: "09000a089538bd59b32ccb99f5b455b99c15b3e42cdd8e2d3c529302748c8734"
         ),
         .binaryTarget(
             name: "KSCrash",
             url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.72/KSCrash.xcframework.zip",
-            checksum: "b2c6266cec7a8834ec036bb00c7ffc772ef2644b8a4016b00c00f9e2dd054bb1"
+            checksum: "b8a20cea8eef4234c7489e7d58b836f466f02023821c2f491bad121a00644535"
         ),
         .binaryTarget(
             name: "SwiftProtobuf",
             url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.72/SwiftProtobuf.xcframework.zip",
-            checksum: "c488077ec88e475d13ecbf6fcc02938756830b8bce838e7c68125260e0fdc1dc"
+            checksum: "37fe902b0274d5fdb22c7149bfe3fbd27b20a422771127b842d8e47a75dc9207"
         )
     ]
 )
