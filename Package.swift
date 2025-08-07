@@ -24,33 +24,33 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "IMQACore",
-            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.88/IMQACore.xcframework.zip",
-            checksum: "e71513e5fed9383566ed6114cb4bfd392dc4dc247d661cda2adb4e74d7fda72b"
+            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.89/IMQACore.xcframework.zip",
+            checksum: "47e47f533acd845a50226a5614ced43c0872258cea587c3e0e1aa0349e4bed07"
         ),
         .binaryTarget(
             name: "IMQACommon",
-            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.88/IMQACommon.xcframework.zip",
-            checksum: "e843749f583b86358a96613a8d533ee212c2c23fc4b2e19041d4f47b3e36439a"
+            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.89/IMQACommon.xcframework.zip",
+            checksum: "e5e6b2afb22996f6ddf9c91398da668839f7d32b124f75df746a8adc5c845f44"
         ),
         .binaryTarget(
             name: "IMQADeviceInfo",
-            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.88/IMQADeviceInfo.xcframework.zip",
-            checksum: "8b424a794f130cafdee3934fbd927b365c48f29bbc69cc5eb68fda50a3a0661f"
+            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.89/IMQADeviceInfo.xcframework.zip",
+            checksum: "5f0fd390e93b6263490267e65d1cf7974d558a921723fc006a4e19082d85afab"
         ),
         .binaryTarget(
             name: "IMQAObjCUtilsInternal",
-            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.88/IMQAObjCUtilsInternal.xcframework.zip",
-            checksum: "09c65fd0a99abb608bc7479549574ed40a585cde3f498689a7280d7f964d5de5"
+            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.89/IMQAObjCUtilsInternal.xcframework.zip",
+            checksum: "3ab90fa2de59c9af67788772f31aaa2d4161952e92ff5cf65635b4cb28a830e0"
         ),
         .binaryTarget(
             name: "KSCrash",
-            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.88/KSCrash.xcframework.zip",
-            checksum: "813aa8f047d6797fc805827b1c5924d6536532d380ca495fa7a615a0d0fba1f5"
+            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.89/KSCrash.xcframework.zip",
+            checksum: "a178ade7415248271f64431ed1720d9df055455ba5cc4854b7709a3a282e6a42"
         ),
         .binaryTarget(
             name: "SwiftProtobuf",
-            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.88/SwiftProtobuf.xcframework.zip",
-            checksum: "54c431e6e12bf9b423a857843a9d00e44634a8a4cc1e28e08bd035d1587e700b"
+            url: "https://github.com/idlerecord/imqa-ios-sdk-spm/releases/download/1.0.89/SwiftProtobuf.xcframework.zip",
+            checksum: "a230b9d90ee650bcc0df12f55f1bc455a36ca2e656c98cdd8c2ab805065d794a"
         )
     ]
 )
