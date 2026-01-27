@@ -2,104 +2,136 @@ name: Publish to SPM
 
 on:
   repository_dispatch:
-    types: [trigger-publishSPM-workflow]  # Listen for trigger event from Workflow A
-    
+    types: [trigger-publishSPM-workflow]
+
   workflow_dispatch:
     inputs:
       VERSION:
-        description: 'SDK Version'
-        required: false
-        default: '1.0.58'
-
+        description: 'SDK Version (e.g. 1.0.105)'
+        required: true
       URL:
-        description: 'ZIP File Download URL'
-        required: false
-        default: 'https://cdn.imqa.io/release/sdk/ios/1.0.58/1.0.58_20250529_new.zip'
-
+        description: 'SDK bundle zip download URL'
+        required: true
       ARCHIVE_NAME:
-        description: 'Archive file name (e.g. app.zip)'
-        required: false
-        default: '1.0.58_20250529_new.zip'
-
+        description: 'Bundle zip file name'
+        required: true
 
 jobs:
   publish:
-    runs-on: publishSPM  # Update this to the appropriate environment
+    runs-on: macos-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-      
-      - name: 🧰 Install zip
-        run: brew install zip
+      # ------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Create directory for downloaded artifacts
-        run: mkdir -p ./downloaded  # 确保目录存在
-
-      - name: Download zip from remote server
+      # ------------------------------------------------------------
+      # 2. Resolve inputs (auto / manual unified)
+      # ------------------------------------------------------------
+      - name: Resolve inputs
         run: |
-          curl -O "${{ github.event.client_payload.url || github.event.inputs.URL}}"
-          unzip ${{ github.event.client_payload.archive_name || github.event.inputs.ARCHIVE_NAME }} -d ./extracted
+          VERSION="${{ github.event.client_payload.version || inputs.VERSION }}"
+          URL="${{ github.event.client_payload.url || inputs.URL }}"
+          ARCHIVE="${{ github.event.client_payload.archive_name || inputs.ARCHIVE_NAME }}"
 
-      - name: Replace xcframework
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "URL=$URL" >> $GITHUB_ENV
+          echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
+
+      # ------------------------------------------------------------
+      # 3. Download & unzip SDK bundle
+      # ------------------------------------------------------------
+      - name: Download SDK bundle
+        run: |
+          curl -L -o "$ARCHIVE" "$URL"
+          unzip "$ARCHIVE" -d extracted
+
+      # ------------------------------------------------------------
+      # 4. Locate folder containing xcframeworks
+      #    （自动兜底：不管多包一层）
+      # ------------------------------------------------------------
+      - name: Locate xcframework root
         run: |
           set -e
-          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
-          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
-          rm -rf "$DEST_DIR"/*  # Clear out the old xcframework
-          cp -R ./extracted/* "$DEST_DIR"  # Copy new xcframework into repo
+          ROOT=$(find extracted -type d -maxdepth 2 | while read d; do
+            ls "$d"/*.xcframework >/dev/null 2>&1 && echo "$d" && break
+          done)
 
-      - name: ♻️ Zip all .xcframeworks
+          if [ -z "$ROOT" ]; then
+            echo "❌ No xcframeworks found"
+            exit 1
+          fi
+
+          echo "XC_ROOT=$ROOT" >> $GITHUB_ENV
+          echo "✅ xcframework root: $ROOT"
+
+      # ------------------------------------------------------------
+      # 5. Create SPM-compliant zip files
+      #    （zip 根目录 = xxx.xcframework）
+      # ------------------------------------------------------------
+      - name: Create SPM zips
         run: |
-          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
-          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
-          mkdir -p "$REPO_DIR"/zips
-          for f in "$DEST_DIR"/*.xcframework; do
-            name=$(basename "$f" .xcframework)
-            zip -r "$REPO_DIR/zips/${name}.xcframework.zip" "$f"
+          mkdir -p zips
+
+          for f in "$XC_ROOT"/*.xcframework; do
+            name=$(basename "$f")
+            echo "📦 Zipping $name"
+
+            (
+              cd "$XC_ROOT"
+              zip -r "$GITHUB_WORKSPACE/zips/${name}.zip" "$name"
+            )
           done
 
-      - name: 🧮 Compute checksums
-        id: checksums
+      # ------------------------------------------------------------
+      # 6. Validate zip structure (optional but recommended)
+      # ------------------------------------------------------------
+      - name: Validate SPM zip structure
         run: |
-          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
-          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
-          echo "checksums=" >> $GITHUB_ENV
-          for f in "$REPO_DIR"/zips/*.zip; do
-            name=$(basename "$f" .xcframework.zip)
-            checksum=$(swift package compute-checksum "$f")
-            echo "$name=$checksum" >> $GITHUB_ENV
+          for z in zips/*.zip; do
+            echo "🔍 $z"
+            unzip -l "$z" | head -n 20
           done
 
-      - name: 📝 Update Package.swift
+      # ------------------------------------------------------------
+      # 7. Update Package.swift (URL + checksum)
+      # ------------------------------------------------------------
+      - name: Update Package.swift
         run: |
-          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
-          DEST_DIR="$REPO_DIR/IMQACore/Frameworks"
-          cd "$REPO_DIR"
-          version=${{ github.event.client_payload.version || github.event.inputs.VERSION}}
-          for f in "$REPO_DIR"/zips/*.zip; do
-            name=$(basename "$f" .xcframework.zip)
-            checksum=$(swift package compute-checksum "$f")
-            sed -i '' "/name: \"$name\",/,/checksum:/ {
-              s|url: \".*\"|url: \"https://github.com/${{ github.repository }}/releases/download/${version}/${name}.xcframework.zip\"|
-              s|checksum: \".*\"|checksum: \"${checksum}\"|
+          set -e
+          for z in zips/*.zip; do
+            name=$(basename "$z" .zip)
+            checksum=$(swift package compute-checksum "$z")
+
+            echo "✏️ Updating $name ($checksum)"
+
+            sed -i '' "/name: \"$name\"/,/checksum:/ {
+              s|url: \".*\"|url: \"https://github.com/${{ github.repository }}/releases/download/$VERSION/${name}.zip\"|
+              s|checksum: \".*\"|checksum: \"$checksum\"|
             }" Package.swift
           done
 
-      - name: 🚀 Commit updated Package.swift
+      # ------------------------------------------------------------
+      # 8. Commit & tag
+      # ------------------------------------------------------------
+      - name: Commit & tag
         run: |
-          REPO_DIR="/Users/imqatest/Desktop/iOS/PublishSDKONSPM"  # Update the path to your repo directory
-          cd "$REPO_DIR"
           git add Package.swift
-          git commit -m "build: update Package.swift for ${{ github.event.client_payload.version || github.event.inputs.VERSION}} binary release"
-          git tag -f ${{ github.event.client_payload.version || github.event.inputs.VERSION}}
-          git push origin main
-          git push -f origin ${{ github.event.client_payload.version || github.event.inputs.VERSION}}
+          git commit -m "release: $VERSION SPM binary update" || echo "No changes"
 
+          git tag -f "$VERSION"
+          git push origin main
+          git push -f origin "$VERSION"
+
+      # ------------------------------------------------------------
+      # 9. Create GitHub Release & upload zips
+      # ------------------------------------------------------------
       - name: 📦 Upload release artifacts
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.client_payload.version || github.event.inputs.VERSION}}
-          files: /Users/imqatest/Desktop/iOS/PublishSDKONSPM/zips/*.zip
+          tag_name: ${{ env.VERSION }}
+          files: zips/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN_COPY }}
