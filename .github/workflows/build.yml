@@ -103,7 +103,7 @@ jobs:
           set -e
           VERSION="${{ github.event.inputs.VERSION }}"
           git status
-          git add Package.swift
+          git add Package.swift IMQACore/Frameworks  
           git commit -m "release(spm): ${VERSION}"
           git tag "${VERSION}"
           git push origin main
