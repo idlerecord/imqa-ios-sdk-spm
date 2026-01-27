@@ -1,19 +1,18 @@
 name: Publish to SPM
 
 on:
-  repository_dispatch:
-    types: [trigger-publishSPM-workflow]
-
   workflow_dispatch:
     inputs:
       VERSION:
-        description: 'SDK Version (e.g. 1.0.105)'
+        description: 'SDK Version (e.g. 1.0.107)'
         required: true
+
       URL:
-        description: 'SDK bundle zip download URL'
+        description: 'ZIP File Download URL'
         required: true
+
       ARCHIVE_NAME:
-        description: 'Bundle zip file name'
+        description: 'Archive file name (e.g. sdk.zip)'
         required: true
 
 jobs:
@@ -24,114 +23,99 @@ jobs:
       # ------------------------------------------------------------
       # 1. Checkout
       # ------------------------------------------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: 🧾 Checkout repo
+        uses: actions/checkout@v3
 
       # ------------------------------------------------------------
-      # 2. Resolve inputs (auto / manual unified)
+      # 2. Prepare directories
       # ------------------------------------------------------------
-      - name: Resolve inputs
+      - name: 📁 Prepare workspace
         run: |
-          VERSION="${{ github.event.client_payload.version || inputs.VERSION }}"
-          URL="${{ github.event.client_payload.url || inputs.URL }}"
-          ARCHIVE="${{ github.event.client_payload.archive_name || inputs.ARCHIVE_NAME }}"
-
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "URL=$URL" >> $GITHUB_ENV
-          echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
+          mkdir -p downloaded extracted zips
 
       # ------------------------------------------------------------
-      # 3. Download & unzip SDK bundle
+      # 3. Download SDK archive
       # ------------------------------------------------------------
-      - name: Download SDK bundle
+      - name: ⬇️ Download SDK artifacts
         run: |
-          curl -L -o "$ARCHIVE" "$URL"
-          unzip "$ARCHIVE" -d extracted
+          curl -L -o downloaded/${{ github.event.inputs.ARCHIVE_NAME }} \
+            "${{ github.event.inputs.URL }}"
+
+          unzip downloaded/${{ github.event.inputs.ARCHIVE_NAME }} -d extracted
 
       # ------------------------------------------------------------
-      # 4. Locate folder containing xcframeworks
-      #    （自动兜底：不管多包一层）
+      # 4. Replace xcframeworks in repo
       # ------------------------------------------------------------
-      - name: Locate xcframework root
+      - name: 🔄 Replace xcframeworks
         run: |
           set -e
-          ROOT=$(find extracted -type d -maxdepth 2 | while read d; do
-            ls "$d"/*.xcframework >/dev/null 2>&1 && echo "$d" && break
-          done)
-
-          if [ -z "$ROOT" ]; then
-            echo "❌ No xcframeworks found"
-            exit 1
-          fi
-
-          echo "XC_ROOT=$ROOT" >> $GITHUB_ENV
-          echo "✅ xcframework root: $ROOT"
+          DEST_DIR="IMQACore/Frameworks"
+          rm -rf "$DEST_DIR"
+          mkdir -p "$DEST_DIR"
+          cp -R extracted/*.xcframework "$DEST_DIR"
 
       # ------------------------------------------------------------
-      # 5. Create SPM-compliant zip files
-      #    （zip 根目录 = xxx.xcframework）
+      # 5. Zip xcframeworks (SPM-safe: ditto)
       # ------------------------------------------------------------
-      - name: Create SPM zips
+      - name: 📦 Zip xcframeworks
         run: |
-          mkdir -p zips
-
-          for f in "$XC_ROOT"/*.xcframework; do
-            name=$(basename "$f")
-            echo "📦 Zipping $name"
-
-            (
-              cd "$XC_ROOT"
-              zip -r "$GITHUB_WORKSPACE/zips/${name}.zip" "$name"
-            )
+          set -e
+          for f in IMQACore/Frameworks/*.xcframework; do
+            name=$(basename "$f" .xcframework)
+            ditto -c -k --sequesterRsrc --keepParent \
+              "$f" "zips/${name}.xcframework.zip"
           done
 
       # ------------------------------------------------------------
-      # 6. Validate zip structure (optional but recommended)
+      # 6. Compute checksums (single source of truth)
       # ------------------------------------------------------------
-      - name: Validate SPM zip structure
-        run: |
-          for z in zips/*.zip; do
-            echo "🔍 $z"
-            unzip -l "$z" | head -n 20
-          done
-
-      # ------------------------------------------------------------
-      # 7. Update Package.swift (URL + checksum)
-      # ------------------------------------------------------------
-      - name: Update Package.swift
+      - name: 🧮 Compute checksums
         run: |
           set -e
-          for z in zips/*.zip; do
-            name=$(basename "$z" .zip)
-            checksum=$(swift package compute-checksum "$z")
+          echo "CHECKSUM_MAP<<EOF" >> $GITHUB_ENV
+          for f in zips/*.zip; do
+            name=$(basename "$f" .xcframework.zip)
+            checksum=$(swift package compute-checksum "$f")
+            echo "$name=$checksum"
+          done >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-            echo "✏️ Updating $name ($checksum)"
+      # ------------------------------------------------------------
+      # 7. Update Package.swift
+      # ------------------------------------------------------------
+      - name: 📝 Update Package.swift
+        run: |
+          set -e
+          VERSION="${{ github.event.inputs.VERSION }}"
 
-            sed -i '' "/name: \"$name\"/,/checksum:/ {
-              s|url: \".*\"|url: \"https://github.com/${{ github.repository }}/releases/download/$VERSION/${name}.zip\"|
-              s|checksum: \".*\"|checksum: \"$checksum\"|
+          while IFS='=' read -r name checksum; do
+            sed -i '' "/name: \"$name\",/,/checksum:/ {
+              s|url: \".*\"|url: \"https://github.com/${{ github.repository }}/releases/download/${VERSION}/${name}.xcframework.zip\"|
+              s|checksum: \".*\"|checksum: \"${checksum}\"|
             }" Package.swift
-          done
+          done <<< "$CHECKSUM_MAP"
 
       # ------------------------------------------------------------
-      # 8. Commit & tag
+      # 8. Commit & tag (NO force, tag immutable)
       # ------------------------------------------------------------
-      - name: Commit & tag
+      - name: 🚀 Commit & tag
         run: |
+          set -e
+          VERSION="${{ github.event.inputs.VERSION }}"
+          git status
           git add Package.swift
-          git commit -m "release: $VERSION SPM binary update" || echo "No changes"
-
-          git tag -f "$VERSION"
+          git commit -m "release(spm): ${VERSION}"
+          git tag "${VERSION}"
           git push origin main
-          git push -f origin "$VERSION"
+          git push origin "${VERSION}"
 
       # ------------------------------------------------------------
-      # 9. Create GitHub Release & upload zips
+      # 9. Create GitHub Release (use PAT)
       # ------------------------------------------------------------
-      - name: 📦 Upload release artifacts
+      - name: 📦 Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ github.event.inputs.VERSION }}
           files: zips/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN_COPY }}
